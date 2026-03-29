@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Sidebar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black:   #0c0c0a;
+  --surface: #111110;
+  --border:  rgba(242,240,232,0.09);
+  --white:   #f2f0e8;
+  --dim:     rgba(242,240,232,0.35);
+  --muted:   rgba(242,240,232,0.18);
+  --lime:    #c8f400;
+  --red:     #ff4444;
+  --mono:    'IBM Plex Mono', monospace;
+  --display: 'Bebas Neue', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── VIEWS ── */
+.view { display: none; flex-direction: column; height: 100%; }
+.view.active { display: flex; }
+
+/* ══════════════════════════════
+   HEADER
+══════════════════════════════ */
+.hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--black);
+  position: relative;
+}
+.hdr::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--lime), transparent);
+  opacity: 0.4;
+}
+.hdr-left { display: flex; align-items: center; gap: 8px; }
+.logo {
+  font-family: var(--display);
+  font-size: 20px;
+  letter-spacing: 3px;
+  line-height: 1;
+}
+.logo span { color: var(--lime); }
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--lime);
+  animation: blink 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+.hdr-right { display: flex; gap: 4px; align-items: center; }
+.hbtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+.hbtn:hover { border-color: var(--white); color: var(--white); }
+.hbtn:disabled { opacity: 0.25; pointer-events: none; }
+.hbtn.icon { padding: 4px 7px; font-size: 12px; letter-spacing: 0; }
+
+/* ── PAGE PILL ── */
+.page-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  min-height: 30px;
+}
+.page-pill:hover { background: rgba(242,240,232,0.03); }
+.pill-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--lime);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.pill-dot.error { background: var(--red); }
+.pill-url {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pill-action {
+  color: var(--lime);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════
+   MESSAGES
+══════════════════════════════ */
+#msgs {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 0 8px;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,244,0,0.15) transparent;
+}
+#msgs::-webkit-scrollbar { width: 3px; }
+#msgs::-webkit-scrollbar-thumb { background: rgba(200,244,0,0.2); border-radius: 2px; }
+
+/* Welcome screen */
+.welcome {
+  padding: 28px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.welcome-logo {
+  font-family: var(--display);
+  font-size: 48px;
+  letter-spacing: 4px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.welcome-logo span { color: var(--lime); }
+.welcome-tagline {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+.sugs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.sug {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 8px 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+.sug:hover { border-color: var(--lime); color: var(--lime); }
+
+/* Message bubbles */
+.mwrap {
+  padding: 8px 14px;
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  opacity: 0;
+  animation: msgIn 0.32s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+@keyframes msgIn { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+.mwrap.user { flex-direction: row-reverse; }
+.mwrap.user .mtext {
+  background: rgba(242,240,232,0.07);
+  border: 1px solid rgba(242,240,232,0.1);
+  border-radius: 12px 12px 3px 12px;
+  padding: 8px 12px;
+  color: rgba(242,240,232,0.75);
+  display: inline-block;
+  max-width: 88%;
+}
+.mwrap.user .micon { display: none; }
+.micon {
+  color: var(--lime);
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  line-height: 1;
+}
+.mtext {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--white);
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+.mtext.err { color: #ff6b6b; font-size: 11px; }
+
+/* Typing dots */
+.tdots { display: flex; gap: 4px; padding: 4px 0; }
+.td { width: 4px; height: 4px; border-radius: 50%; background: var(--lime); animation: tdb 1s ease infinite; }
+.td:nth-child(2){animation-delay:.15s} .td:nth-child(3){animation-delay:.3s}
+@keyframes tdb { 0%,60%,100%{opacity:0.2;transform:scale(1)} 30%{opacity:1;transform:scale(1.4)} }
+
+/* Markdown rendering */
+.mtext p { margin-bottom: 0.6em; }
+.mtext p:last-child { margin-bottom: 0; }
+.mtext h1,.mtext h2,.mtext h3 { font-family: var(--display); letter-spacing: 1px; color: var(--white); margin: 0.8em 0 0.3em; line-height: 1; }
+.mtext h1{font-size:18px}.mtext h2{font-size:15px}.mtext h3{font-size:13px}
+.mtext ul,.mtext ol { padding-left: 1.2em; margin: 0.4em 0; }
+.mtext li { margin-bottom: 0.2em; }
+.mtext code { font-family: var(--mono); font-size: 11px; background: rgba(200,244,0,0.08); border: 1px solid rgba(200,244,0,0.18); color: var(--lime); padding: 1px 4px; }
+.mtext pre { background: rgba(242,240,232,0.04); border: 1px solid var(--border); border-left: 2px solid var(--lime); padding: 10px 12px; margin: 0.5em 0; overflow-x: auto; }
+.mtext pre code { background: none; border: none; color: var(--white); padding: 0; font-size: 11px; }
+.mtext strong { color: var(--white); font-weight: 500; }
+.mtext em { color: rgba(242,240,232,0.65); }
+.mtext blockquote { border-left: 2px solid var(--lime); margin: 0.5em 0; padding: 4px 10px; color: rgba(242,240,232,0.5); }
+.mtext a { color: var(--lime); text-decoration: underline; text-underline-offset: 2px; }
+.mtext table { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 11px; }
+.mtext th { background: rgba(200,244,0,0.08); color: var(--lime); padding: 5px 8px; border: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; }
+.mtext td { padding: 5px 8px; border: 1px solid rgba(242,240,232,0.07); color: rgba(242,240,232,0.7); }
+
+/* ══════════════════════════════
+   INPUT ZONE
+══════════════════════════════ */
+.izone {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 12px;
+  flex-shrink: 0;
+  background: var(--black);
+}
+.irow {
+  display: flex;
+  align-items: flex-end;
+  border: 1px solid rgba(242,240,232,0.15);
+  transition: border-color 0.2s;
+}
+.irow:focus-within { border-color: var(--lime); }
+#inp {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 9px 11px;
+  resize: none;
+  max-height: 120px;
+  line-height: 1.6;
+}
+#inp::placeholder { color: var(--muted); }
+#sbtn {
+  background: var(--lime);
+  border: none;
+  color: var(--black);
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 1px;
+  padding: 0 14px;
+  height: 40px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+#sbtn:hover { background: var(--white); }
+#sbtn:disabled { background: rgba(200,244,0,0.2); color: rgba(0,0,0,0.35); cursor: default; }
+
+.ihint {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.search-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.search-toggle input { accent-color: var(--lime); cursor: pointer; }
+.search-toggle label { cursor: pointer; font-size: 9px; color: rgba(242,240,232,0.25); letter-spacing: 0.06em; transition: color 0.15s; }
+.search-toggle input:checked + label { color: var(--lime); }
+
+/* ══════════════════════════════
+   SETTINGS VIEW
+══════════════════════════════ */
+#view-settings {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,244,0,0.15) transparent;
+}
+.settings-hdr {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.settings-title {
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+.settings-title span { color: var(--lime); }
+.settings-body { padding: 20px 14px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; flex: 1; }
+.settings-section-title {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lime);
+  margin-bottom: 12px;
+}
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+.field-desc {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  margin-top: 2px;
+}
+.field-input {
+  background: rgba(242,240,232,0.04);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  letter-spacing: 0.04em;
+  width: 100%;
+}
+.field-input:focus { border-color: var(--lime); }
+.field-input::placeholder { color: var(--muted); }
+.save-btn {
+  background: var(--lime);
+  border: none;
+  color: var(--black);
+  font-family: var(--display);
+  font-size: 15px;
+  letter-spacing: 2px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+  margin-top: 4px;
+}
+.save-btn:hover { background: var(--white); }
+.save-msg {
+  font-size: 10px;
+  color: var(--lime);
+  letter-spacing: 0.1em;
+  text-align: center;
+  height: 16px;
+  transition: opacity 0.3s;
+}
+.save-msg.hidden { opacity: 0; }
+.settings-info {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--lime);
+  padding: 12px 14px;
+  background: rgba(200,244,0,0.02);
+}
+.settings-info p { font-size: 10px; color: rgba(242,240,232,0.4); line-height: 1.75; }
+.settings-info strong { color: rgba(242,240,232,0.7); }
+.settings-info code {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: rgba(200,244,0,0.08);
+  border: 1px solid rgba(200,244,0,0.18);
+  color: var(--lime);
+  padding: 1px 4px;
+}
+.model-select {
+  background: rgba(242,240,232,0.04);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  cursor: pointer;
+}
+.model-select:focus { border-color: var(--lime); }
+.model-select option { background: #1a1a18; }
+
+/* Divider */
+.divider { height: 1px; background: var(--border); }
+
+/* Status badge */
+.key-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+.key-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+.key-dot.set { background: var(--lime); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ CHAT VIEW ══ -->
+  <div class="view active" id="view-chat">
+
+    <div class="hdr">
+      <div class="hdr-left">
+        <div class="live-dot"></div>
+        <div class="logo">AI<span>.</span></div>
+      </div>
+      <div class="hdr-right">
+        <button class="hbtn" id="sumBtn" onclick="summarizePage()">Summarize</button>
+        <button class="hbtn" onclick="clearChat()">Clear</button>
+        <button class="hbtn icon" title="Settings" onclick="showSettings()">⚙</button>
+      </div>
+    </div>
+
+    <div class="page-pill" id="pagePill" onclick="summarizePage()">
+      <div class="pill-dot" id="pageDot"></div>
+      <div class="pill-url" id="pillUrl">Loading page...</div>
+      <div class="pill-action" id="pillAction">SUMMARIZE ↗</div>
+    </div>
+
+    <div id="msgs">
+      <div class="welcome" id="welcome">
+        <div class="welcome-logo">AI<span>.</span></div>
+        <div class="welcome-tagline">// Ask anything about this page</div>
+        <div class="sugs">
+          <button class="sug" onclick="qs('Summarize this page for me')">Summarize this page</button>
+          <button class="sug" onclick="qs('What are the key points here?')">Key points</button>
+          <button class="sug" onclick="qs('Explain the main topic simply')">Explain simply</button>
+          <button class="sug" onclick="qs('What should I know about this?')">What should I know?</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="izone">
+      <div class="irow">
+        <textarea id="inp" rows="1" placeholder="Ask about this page..." oninput="grow(this)" onkeydown="kc(event)"></textarea>
+        <button id="sbtn" onclick="send()">GO</button>
+      </div>
+      <div class="ihint">
+        <span>Enter · Shift+Enter new line</span>
+        <div class="search-toggle">
+          <input type="checkbox" id="searchToggle" />
+          <label for="searchToggle">Web search</label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ SETTINGS VIEW ══ -->
+  <div class="view" id="view-settings">
+
+    <div class="settings-hdr">
+      <div class="settings-title">SETTINGS<span>.</span></div>
+      <button class="hbtn" onclick="showChat()">← Back</button>
+    </div>
+
+    <div class="settings-body">
+
+      <div>
+        <div class="settings-section-title">// API Keys</div>
+        <div class="field-group">
+          <div class="field-label">OpenRouter Key</div>
+          <input class="field-input" id="orKeyInput" type="password" placeholder="sk-or-v1-..." autocomplete="off" />
+          <div class="key-status"><div class="key-dot" id="orKeyDot"></div><span id="orKeyStatus">Not set</span></div>
+          <div class="field-desc">Required for AI responses. Get a free key at <strong>openrouter.ai</strong> — use Gemini 2.0 Flash for free.</div>
+        </div>
+        <div style="height:16px;"></div>
+        <div class="field-group">
+          <div class="field-label">Serper Key <span style="color:var(--muted);font-size:9px;">(optional)</span></div>
+          <input class="field-input" id="serperKeyInput" type="password" placeholder="your-serper-key..." autocomplete="off" />
+          <div class="key-status"><div class="key-dot" id="serperKeyDot"></div><span id="serperKeyStatus">Not set</span></div>
+          <div class="field-desc">Enables web search. Get a free key at <strong>serper.dev</strong> — 2,500 free searches/month.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <div class="settings-section-title">// Model</div>
+        <div class="field-group">
+          <div class="field-label">OpenRouter Model</div>
+          <select class="model-select" id="modelSelect">
+            <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash (default, free)</option>
+            <option value="google/gemini-2.5-pro-preview">Gemini 2.5 Pro</option>
+            <option value="openai/gpt-4o">GPT-4o</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini (fast)</option>
+            <option value="anthropic/claude-sonnet-4-5">Claude Sonnet</option>
+            <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B (free)</option>
+            <option value="mistralai/mistral-small-3.1-24b-instruct">Mistral Small (free)</option>
+          </select>
+          <div class="field-desc">Swap models any time. Free models are marked — no spend needed.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <button class="save-btn" onclick="saveSettings()">SAVE SETTINGS</button>
+        <div style="height:8px;"></div>
+        <div class="save-msg hidden" id="saveMsg">// Keys saved ✓</div>
+      </div>
+
+      <div class="settings-info">
+        <p>Keys are stored in <code>chrome.storage.local</code> — on your device only, never sent anywhere except the APIs you configure. You can clear them any time by clicking Clear in the chat view.</p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<script>
+marked.setOptions({ breaks: true, gfm: true });
+
+const MAX_HIST = 20;
+let hist = [];
+let pageContent = null;
+let pageReady = false;
+
+// ── INIT ──
+async function init() {
+  document.getElementById('sumBtn').disabled = true;
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.url) {
+      try {
+        const u = new URL(tab.url);
+        document.getElementById('pillUrl').textContent = u.hostname + (u.pathname.length > 1 ? u.pathname.slice(0, 32) : '');
+      } catch(e) {}
+
+      const result = await chrome.runtime.sendMessage({ type: 'GET_PAGE_CONTENT', tabId: tab.id });
+      if (result?.ok && result.data) {
+        pageContent = result.data;
+        try {
+          const u = new URL(pageContent.url);
+          document.getElementById('pillUrl').textContent = u.hostname + (u.pathname.length > 1 ? u.pathname.slice(0, 32) : '');
+        } catch(e) {}
+      } else {
+        document.getElementById('pillUrl').textContent = tab.title || 'This page';
+        document.getElementById('pageDot').classList.add('error');
+        document.getElementById('pillAction').textContent = 'NO ACCESS';
+      }
+    }
+  } catch(e) {
+    document.getElementById('pillUrl').textContent = 'Current page';
+  }
+
+  // Load saved history
+  try {
+    const stored = await new Promise(res => chrome.storage.local.get('ai_sidebar_hist', res));
+    if (stored.ai_sidebar_hist?.length) {
+      hist = stored.ai_sidebar_hist;
+      document.getElementById('welcome')?.remove();
+      hist.forEach(m => addMsg(m.content, m.role === 'assistant' ? 'bot' : 'user', false));
+    }
+  } catch(e) {}
+
+  pageReady = true;
+  document.getElementById('sumBtn').disabled = false;
+}
+
+// ── SETTINGS ──
+function showSettings() {
+  document.getElementById('view-chat').classList.remove('active');
+  document.getElementById('view-settings').classList.add('active');
+  loadSettingsUI();
+}
+function showChat() {
+  document.getElementById('view-settings').classList.remove('active');
+  document.getElementById('view-chat').classList.add('active');
+}
+
+async function loadSettingsUI() {
+  const keys = await chrome.runtime.sendMessage({ type: 'GET_KEYS' });
+  const orSet = keys.OPENROUTER_KEY && keys.OPENROUTER_KEY !== 'YOUR_OPENROUTER_KEY_HERE';
+  const serperSet = keys.SERPER_KEY && keys.SERPER_KEY !== 'YOUR_SERPER_KEY_HERE';
+
+  document.getElementById('orKeyDot').classList.toggle('set', orSet);
+  document.getElementById('orKeyStatus').textContent = orSet ? 'Key saved ✓' : 'Not set';
+  document.getElementById('serperKeyDot').classList.toggle('set', serperSet);
+  document.getElementById('serperKeyStatus').textContent = serperSet ? 'Key saved ✓' : 'Not set';
+
+  // Load saved model
+  const stored = await new Promise(res => chrome.storage.local.get('ai_model', res));
+  if (stored.ai_model) {
+    const sel = document.getElementById('modelSelect');
+    const opt = [...sel.options].find(o => o.value === stored.ai_model);
+    if (opt) sel.value = stored.ai_model;
+  }
+}
+
+async function saveSettings() {
+  const orKey = document.getElementById('orKeyInput').value.trim();
+  const serperKey = document.getElementById('serperKeyInput').value.trim();
+  const model = document.getElementById('modelSelect').value;
+
+  const toSave = { ai_model: model };
+  if (orKey) toSave.OPENROUTER_KEY = orKey;
+  if (serperKey) toSave.SERPER_KEY = serperKey;
+
+  await new Promise(res => chrome.storage.local.set(toSave, res));
+
+  // Update model in background
+  if (model) await chrome.runtime.sendMessage({ type: 'SAVE_KEYS', orKey: orKey || '', serperKey: serperKey || '' });
+
+  const msg = document.getElementById('saveMsg');
+  msg.classList.remove('hidden');
+  msg.textContent = '// Settings saved ✓';
+  setTimeout(() => msg.classList.add('hidden'), 2500);
+
+  // Refresh status dots
+  loadSettingsUI();
+  // Clear inputs
+  document.getElementById('orKeyInput').value = '';
+  document.getElementById('serperKeyInput').value = '';
+}
+
+// ── HELPERS ──
+function grow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+function kc(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
+function qs(t) { document.getElementById('inp').value = t; send(); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function clearChat() {
+  hist = [];
+  try { chrome.storage.local.set({ ai_sidebar_hist: [] }); } catch(e) {}
+  const msgs = document.getElementById('msgs');
+  msgs.innerHTML = `
+    <div class="welcome" id="welcome">
+      <div class="welcome-logo">AI<span>.</span></div>
+      <div class="welcome-tagline">// Ask anything about this page</div>
+      <div class="sugs">
+        <button class="sug" onclick="qs('Summarize this page for me')">Summarize this page</button>
+        <button class="sug" onclick="qs('What are the key points here?')">Key points</button>
+        <button class="sug" onclick="qs('Explain the main topic simply')">Explain simply</button>
+        <button class="sug" onclick="qs('What should I know about this?')">What should I know?</button>
+      </div>
+    </div>`;
+}
+
+function summarizePage() {
+  if (!pageReady) return;
+  document.getElementById('inp').value = 'Summarize this page — key points only, no fluff.';
+  send();
+}
+
+function addMsg(text, role, animate = true) {
+  document.getElementById('welcome')?.remove();
+  const m = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'mwrap ' + role;
+  if (!animate) { d.style.animation = 'none'; d.style.opacity = '1'; }
+  const isError = role === 'bot' && text.startsWith('⚠');
+  const content = role === 'bot' ? marked.parse(text) : '<p>' + esc(text) + '</p>';
+  d.innerHTML = `<div class="micon">${role === 'bot' ? '✦' : ''}</div><div class="mtext${isError ? ' err' : ''}">${content}</div>`;
+  m.appendChild(d);
+  m.scrollTop = m.scrollHeight;
+  return d;
+}
+
+function addTyping() {
+  document.getElementById('welcome')?.remove();
+  const m = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.id = 'typing'; d.className = 'mwrap bot';
+  d.innerHTML = `<div class="micon">✦</div><div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
+  m.appendChild(d); m.scrollTop = m.scrollHeight;
+}
+
+// ── SEND ──
+async function send() {
+  if (!pageReady) return;
+  const inp = document.getElementById('inp');
+  const sbtn = document.getElementById('sbtn');
+  const useSearch = document.getElementById('searchToggle').checked;
+  const text = inp.value.trim();
+  if (!text) return;
+
+  inp.value = ''; inp.style.height = 'auto';
+  sbtn.disabled = true;
+
+  addMsg(text, 'user');
+  hist.push({ role: 'user', content: text });
+  addTyping();
+
+  const trimmedHist = hist.slice(-MAX_HIST);
+
+  // Check if model has been overridden in storage
+  let msgToSend = { type: 'CHAT', messages: trimmedHist, pageContent, useSearch, searchQuery: useSearch ? text : null };
+
+  // Inject custom model if set
+  try {
+    const stored = await new Promise(res => chrome.storage.local.get('ai_model', res));
+    if (stored.ai_model) msgToSend.model = stored.ai_model;
+  } catch(e) {}
+
+  try {
+    const result = await chrome.runtime.sendMessage(msgToSend);
+    document.getElementById('typing')?.remove();
+    if (!result?.ok) throw new Error(result?.error || 'Unknown error');
+    const reply = result.content || 'No response.';
+    addMsg(reply, 'bot');
+    hist.push({ role: 'assistant', content: reply });
+    try { chrome.storage.local.set({ ai_sidebar_hist: hist.slice(-MAX_HIST) }); } catch(e) {}
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    if (hist[hist.length-1]?.role === 'user' && hist[hist.length-1]?.content === text) hist.pop();
+    addMsg(`⚠ Error: ${e.message}`, 'bot');
+  }
+
+  sbtn.disabled = false;
+  inp.focus();
+}
+
+// ── SELECTION PICKUP ──
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'SELECTION' && msg.text) {
+    const inp = document.getElementById('inp');
+    if (!inp.value.trim()) {
+      inp.value = `"${msg.text.slice(0, 200)}" — what does this mean?`;
+      grow(inp);
+      inp.focus();
+    }
+  }
+});
+
+init();
+</script>
+</body>
+</html>
